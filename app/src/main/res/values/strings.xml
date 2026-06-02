@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Emoji Overlay</string>
+    <string name="notification_channel_name">Emoji Overlay Service</string>
+    <string name="notification_title">Emoji Overlay Active</string>
+    <string name="notification_text">Two-finger double-tap to open emoji panel</string>
+</resources>

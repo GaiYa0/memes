@@ -1,0 +1,50 @@
+# Gradle / Android build
+.gradle/
+build/
+**/build/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Local SDK path (machine-specific)
+local.properties
+
+# Kotlin
+.kotlin/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
+*.tmp
+*.swp
+*~
+
+# Signing keys (never commit)
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+
+# Test outputs & coverage (generated locally)
+**/test-results/
+**/reports/
+**/.coverage
+**/jacoco/
+
+# Emulator / device snapshots
+*.hprof
