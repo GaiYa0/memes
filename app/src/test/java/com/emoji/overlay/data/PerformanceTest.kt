@@ -1,6 +1,7 @@
 package com.emoji.overlay.data
 
 import com.emoji.overlay.data.entity.EmojiEntity
+import com.emoji.overlay.testutil.PerformanceAssertions
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -27,7 +28,7 @@ class PerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertNotNull(emoji)
-        assertTrue("Single entity creation should be < 1ms", elapsed < 1.0)
+        PerformanceAssertions.assertWithinMillis("Single entity creation", elapsed, 1.0)
         println("Create 1 emoji: ${elapsed}ms")
     }
 
@@ -38,7 +39,7 @@ class PerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(100, emojis.size)
-        assertTrue("100 entities creation should be < 10ms", elapsed < 10.0)
+        PerformanceAssertions.assertWithinMillis("100 entities creation", elapsed, 10.0)
         println("Create 100 emojis: ${elapsed}ms")
     }
 
@@ -49,7 +50,7 @@ class PerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(1000, emojis.size)
-        assertTrue("1000 entities creation should be < 50ms", elapsed < 50.0)
+        PerformanceAssertions.assertWithinMillis("1000 entities creation", elapsed, 50.0)
         println("Create 1000 emojis: ${elapsed}ms")
     }
 
@@ -60,7 +61,7 @@ class PerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(10000, emojis.size)
-        assertTrue("10000 entities creation should be < 200ms", elapsed < 200.0)
+        PerformanceAssertions.assertWithinMillis("10000 entities creation", elapsed, 200.0)
         println("Create 10000 emojis: ${elapsed}ms")
     }
 
@@ -73,7 +74,7 @@ class PerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(1000, filtered.size)
-        assertTrue("Filter 10k records should be < 10ms", elapsed < 10.0)
+        PerformanceAssertions.assertWithinMillis("Filter 10k records", elapsed, 10.0)
         println("Filter 10000 emojis by category: ${elapsed}ms")
     }
 
@@ -86,7 +87,7 @@ class PerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(2000, favorites.size)
-        assertTrue("Filter favorites from 10k should be < 10ms", elapsed < 10.0)
+        PerformanceAssertions.assertWithinMillis("Filter favorites from 10k", elapsed, 10.0)
         println("Filter 10000 emojis by favorite: ${elapsed}ms")
     }
 
@@ -99,7 +100,7 @@ class PerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertTrue(results.isNotEmpty())
-        assertTrue("Search 10k records should be < 20ms", elapsed < 20.0)
+        PerformanceAssertions.assertWithinMillis("Search 10k records", elapsed, 20.0)
         println("Search 10000 emojis by name: ${elapsed}ms, found: ${results.size}")
     }
 
@@ -114,7 +115,7 @@ class PerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertTrue(results.isNotEmpty())
-        assertTrue("Keyword search on 10k should be < 20ms", elapsed < 20.0)
+        PerformanceAssertions.assertWithinMillis("Keyword search on 10k", elapsed, 20.0)
         println("Search 10000 emojis by keywords: ${elapsed}ms, found: ${results.size}")
     }
 
@@ -130,7 +131,7 @@ class PerformanceTest {
 
         assertEquals(10000L, sorted.first().usageCount)
         assertEquals(1L, sorted.last().usageCount)
-        assertTrue("Sort 10k records should be < 50ms", elapsed < 50.0)
+        PerformanceAssertions.assertWithinMillis("Sort 10k records", elapsed, 50.0)
         println("Sort 10000 emojis by usage: ${elapsed}ms")
     }
 
@@ -176,7 +177,7 @@ class PerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(5000, duplicates) // Half are duplicates
-        assertTrue("Dedup check on 10k should be < 20ms", elapsed < 20.0)
+        PerformanceAssertions.assertWithinMillis("Dedup check on 10k", elapsed, 20.0)
         println("Dedup check on 10000 emojis: ${elapsed}ms, duplicates: $duplicates")
     }
 

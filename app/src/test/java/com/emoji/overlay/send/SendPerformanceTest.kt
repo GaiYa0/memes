@@ -1,6 +1,7 @@
 package com.emoji.overlay.send
 
 import com.emoji.overlay.data.entity.EmojiEntity
+import com.emoji.overlay.testutil.PerformanceAssertions
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -23,7 +24,7 @@ class SendPerformanceTest {
         assertNotNull(file)
         assertNotNull(mimeType)
         assertNotNull(name)
-        assertTrue("Send preparation should be < 1ms", elapsed < 1.0)
+        PerformanceAssertions.assertWithinMillis("Send preparation", elapsed, 1.0)
         println("Send preparation: ${elapsed}ms")
     }
 
@@ -38,7 +39,7 @@ class SendPerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(100, prepared.size)
-        assertTrue("Batch preparation should be < 5ms", elapsed < 5.0)
+        PerformanceAssertions.assertWithinMillis("Batch preparation", elapsed, 5.0)
         println("Batch send preparation (100): ${elapsed}ms")
     }
 
@@ -53,7 +54,7 @@ class SendPerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(1000, prepared.size)
-        assertTrue("Batch preparation should be < 20ms", elapsed < 20.0)
+        PerformanceAssertions.assertWithinMillis("Batch preparation", elapsed, 20.0)
         println("Batch send preparation (1000): ${elapsed}ms")
     }
 
@@ -69,7 +70,7 @@ class SendPerformanceTest {
 
         assertEquals(1000, updated.size)
         assertTrue(updated.all { it.usageCount == it.id + 1 })
-        assertTrue("Usage update should be < 10ms", elapsed < 10.0)
+        PerformanceAssertions.assertWithinMillis("Usage update", elapsed, 10.0)
         println("Recent usage update (1000): ${elapsed}ms")
     }
 
@@ -84,7 +85,7 @@ class SendPerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(1000, toggled.size)
-        assertTrue("Favorite toggle should be < 10ms", elapsed < 10.0)
+        PerformanceAssertions.assertWithinMillis("Favorite toggle", elapsed, 10.0)
         println("Favorite toggle (1000): ${elapsed}ms")
     }
 
@@ -104,7 +105,7 @@ class SendPerformanceTest {
         }
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
-        assertTrue("State transitions should be < 5ms", elapsed < 5.0)
+        PerformanceAssertions.assertWithinMillis("State transitions", elapsed, 5.0)
         println("1000 state transitions: ${elapsed}ms")
     }
 
@@ -117,7 +118,7 @@ class SendPerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(1000, results.size)
-        assertTrue("Result creation should be < 10ms", elapsed < 10.0)
+        PerformanceAssertions.assertWithinMillis("Result creation", elapsed, 10.0)
         println("Send result creation (1000): ${elapsed}ms")
     }
 

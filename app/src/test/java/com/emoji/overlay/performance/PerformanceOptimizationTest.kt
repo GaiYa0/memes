@@ -1,6 +1,7 @@
 package com.emoji.overlay.performance
 
 import com.emoji.overlay.data.entity.EmojiEntity
+import com.emoji.overlay.testutil.PerformanceAssertions
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -28,7 +29,7 @@ class PerformanceOptimizationTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(21, visibleItems.size)
-        assertTrue("Visible items load should be < 1ms", elapsed < 1.0)
+        PerformanceAssertions.assertWithinMillis("Visible items load", elapsed, 1.0)
         println("Scroll 1000 items (visible range): ${elapsed}ms")
     }
 
@@ -42,7 +43,7 @@ class PerformanceOptimizationTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(21, visibleItems.size)
-        assertTrue("Visible items load should be < 1ms", elapsed < 1.0)
+        PerformanceAssertions.assertWithinMillis("Visible items load", elapsed, 1.0)
         println("Scroll 10000 items (visible range): ${elapsed}ms")
     }
 
@@ -56,7 +57,7 @@ class PerformanceOptimizationTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(21, visibleItems.size)
-        assertTrue("Visible items load should be < 1ms", elapsed < 1.0)
+        PerformanceAssertions.assertWithinMillis("Visible items load", elapsed, 1.0)
         println("Scroll 50000 items (visible range): ${elapsed}ms")
     }
 
@@ -74,7 +75,7 @@ class PerformanceOptimizationTest {
 
         assertEquals(10, pages.size)
         assertTrue(pages.all { it.size == pageSize })
-        assertTrue("10 pages load should be < 50ms", elapsed < 50.0)
+        PerformanceAssertions.assertWithinMillis("10 pages load", elapsed, 50.0)
         println("Paging simulation (10 pages from 50000): ${elapsed}ms")
     }
 
@@ -140,7 +141,7 @@ class PerformanceOptimizationTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertTrue(results.isNotEmpty())
-        assertTrue("Search 10000 should be < 30ms", elapsed < 30.0)
+        PerformanceAssertions.assertWithinMillis("Search 10000", elapsed, 30.0)
         println("Search 10000 by name: ${elapsed}ms, results=${results.size}")
     }
 
@@ -155,7 +156,7 @@ class PerformanceOptimizationTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertTrue(results.isNotEmpty())
-        assertTrue("Search 50000 should be < 100ms", elapsed < 100.0)
+        PerformanceAssertions.assertWithinMillis("Search 50000", elapsed, 100.0)
         println("Search 50000 by keywords: ${elapsed}ms, results=${results.size}")
     }
 
@@ -172,7 +173,7 @@ class PerformanceOptimizationTest {
         }
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
-        assertTrue("Combined search should be < 50ms", elapsed < 50.0)
+        PerformanceAssertions.assertWithinMillis("Combined search", elapsed, 50.0)
         println("Combined search 10000: ${elapsed}ms, results=${results.size}")
     }
 
@@ -189,7 +190,7 @@ class PerformanceOptimizationTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(10000, toggled.size)
-        assertTrue("Batch toggle should be < 20ms", elapsed < 20.0)
+        PerformanceAssertions.assertWithinMillis("Batch toggle", elapsed, 20.0)
         println("Batch favorite toggle 10000: ${elapsed}ms")
     }
 
@@ -203,7 +204,7 @@ class PerformanceOptimizationTest {
 
         assertEquals(10000, updated.size)
         assertTrue(updated.all { it.usageCount == it.id + 1 })
-        assertTrue("Batch update should be < 20ms", elapsed < 20.0)
+        PerformanceAssertions.assertWithinMillis("Batch update", elapsed, 20.0)
         println("Batch usage update 10000: ${elapsed}ms")
     }
 
@@ -218,7 +219,7 @@ class PerformanceOptimizationTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(50000L, sorted.first().usageCount)
-        assertTrue("Sort 50000 should be < 300ms", elapsed < 300.0)
+        PerformanceAssertions.assertWithinMillis("Sort 50000", elapsed, 300.0)
         println("Sort 50000 items: ${elapsed}ms")
     }
 
@@ -279,7 +280,7 @@ class PerformanceOptimizationTest {
         }
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
-        assertTrue("10000 transitions should be < 10ms", elapsed < 10.0)
+        PerformanceAssertions.assertWithinMillis("10000 transitions", elapsed, 10.0)
         println("Overlay state transitions (10000): ${elapsed}ms")
     }
 

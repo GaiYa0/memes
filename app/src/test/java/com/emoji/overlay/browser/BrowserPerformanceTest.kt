@@ -1,6 +1,7 @@
 package com.emoji.overlay.browser
 
 import com.emoji.overlay.data.entity.EmojiEntity
+import com.emoji.overlay.testutil.PerformanceAssertions
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -24,7 +25,7 @@ class BrowserPerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(100, filtered.size)
-        assertTrue("Filter 1000 should be < 5ms", elapsed < 5.0)
+        PerformanceAssertions.assertWithinMillis("Filter 1000", elapsed, 5.0)
         println("Filter 1000 emojis by category: ${elapsed}ms")
     }
 
@@ -37,7 +38,7 @@ class BrowserPerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(1000, filtered.size)
-        assertTrue("Filter 10000 should be < 20ms", elapsed < 20.0)
+        PerformanceAssertions.assertWithinMillis("Filter 10000", elapsed, 20.0)
         println("Filter 10000 emojis by category: ${elapsed}ms")
     }
 
@@ -50,7 +51,7 @@ class BrowserPerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(5000, filtered.size)
-        assertTrue("Filter 50000 should be < 50ms", elapsed < 50.0)
+        PerformanceAssertions.assertWithinMillis("Filter 50000", elapsed, 50.0)
         println("Filter 50000 emojis by category: ${elapsed}ms")
     }
 
@@ -63,7 +64,7 @@ class BrowserPerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertTrue(results.isNotEmpty())
-        assertTrue("Search 10000 should be < 20ms", elapsed < 20.0)
+        PerformanceAssertions.assertWithinMillis("Search 10000", elapsed, 20.0)
         println("Search 10000 emojis by name: ${elapsed}ms, results: ${results.size}")
     }
 
@@ -78,7 +79,7 @@ class BrowserPerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertTrue(results.isNotEmpty())
-        assertTrue("Search 50000 should be < 100ms", elapsed < 100.0)
+        PerformanceAssertions.assertWithinMillis("Search 50000", elapsed, 100.0)
         println("Search 50000 emojis by keywords: ${elapsed}ms, results: ${results.size}")
     }
 
@@ -93,7 +94,7 @@ class BrowserPerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(10000L, sorted.first().usageCount)
-        assertTrue("Sort 10000 should be < 50ms", elapsed < 50.0)
+        PerformanceAssertions.assertWithinMillis("Sort 10000", elapsed, 50.0)
         println("Sort 10000 emojis by usage: ${elapsed}ms")
     }
 
@@ -108,7 +109,7 @@ class BrowserPerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(50000L, sorted.first().usageCount)
-        assertTrue("Sort 50000 should be < 200ms", elapsed < 200.0)
+        PerformanceAssertions.assertWithinMillis("Sort 50000", elapsed, 200.0)
         println("Sort 50000 emojis by usage: ${elapsed}ms")
     }
 
@@ -118,15 +119,15 @@ class BrowserPerformanceTest {
         val pageSize = 50
 
         val start = System.nanoTime()
-        val page1 = allItems.drop(0).take(pageSize)
-        val page2 = allItems.drop(50).take(pageSize)
-        val page100 = allItems.drop(4950).take(pageSize)
+        val page1 = allItems.subList(0, pageSize)
+        val page2 = allItems.subList(50, 50 + pageSize)
+        val page100 = allItems.subList(4950, 4950 + pageSize)
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(50, page1.size)
         assertEquals(50, page2.size)
         assertEquals(50, page100.size)
-        assertTrue("Paging should be < 5ms", elapsed < 5.0)
+        PerformanceAssertions.assertWithinMillis("Paging", elapsed, 5.0)
         println("Paging simulation (3 pages from 10000): ${elapsed}ms")
     }
 
@@ -141,7 +142,7 @@ class BrowserPerformanceTest {
         val elapsed = (System.nanoTime() - start) / 1_000_000.0
 
         assertEquals(1000, favorites.size)
-        assertTrue("Favorites filter should be < 20ms", elapsed < 20.0)
+        PerformanceAssertions.assertWithinMillis("Favorites filter", elapsed, 20.0)
         println("Favorites filtering 10000: ${elapsed}ms")
     }
 
@@ -157,7 +158,7 @@ class BrowserPerformanceTest {
 
         assertEquals(50, recent.size)
         assertEquals(10000L, recent.first().usageCount)
-        assertTrue("Recent top 50 should be < 50ms", elapsed < 50.0)
+        PerformanceAssertions.assertWithinMillis("Recent top 50", elapsed, 50.0)
         println("Recent emojis top 50 from 10000: ${elapsed}ms")
     }
 
