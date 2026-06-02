@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import androidx.core.content.FileProvider
 import com.emoji.overlay.data.entity.EmojiEntity
 import com.emoji.overlay.data.repository.EmojiRepository
 import com.emoji.overlay.data.util.ResourceManager
@@ -28,6 +29,7 @@ class EmojiSendManager(
 ) {
     companion object {
         private const val TAG = "EmojiSendManager"
+        private const val QQ_PACKAGE_NAME = "com.tencent.mobileqq"
     }
 
     /**
@@ -41,13 +43,14 @@ class EmojiSendManager(
                 Log.w(TAG, "Emoji file not found: ${emoji.filePath}")
                 return@withContext false
             }
+            val contentUri = getContentUri(file)
 
             // Record usage
             repository.recordUsage(emoji.id)
 
             // Copy to clipboard
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newUri(context.contentResolver, emoji.name, Uri.fromFile(file))
+            val clip = ClipData.newUri(context.contentResolver, emoji.name, contentUri)
             clipboard.setPrimaryClip(clip)
 
             Log.d(TAG, "Emoji copied to clipboard: ${emoji.name}")
@@ -69,28 +72,61 @@ class EmojiSendManager(
                 Log.w(TAG, "Emoji file not found: ${emoji.filePath}")
                 return@withContext false
             }
+            val uri = getContentUri(file)
 
             // Record usage
             repository.recordUsage(emoji.id)
 
-            // Create share intent
-            val uri = Uri.fromFile(file)
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = emoji.mimeType
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            val qqIntent = buildShareIntent(uri, packageName = QQ_PACKAGE_NAME)
+            val fallbackIntent = buildShareIntent(uri, packageName = null)
+            val chooser = Intent.createChooser(fallbackIntent, "发送表情")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+            return@withContext withContext(Dispatchers.Main) {
+                try {
+                    if (isIntentAvailable(qqIntent)) {
+                        context.grantUriPermission(
+                            QQ_PACKAGE_NAME,
+                            uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        )
+                        context.startActivity(qqIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    } else {
+                        context.startActivity(chooser)
+                    }
+                    Log.d(TAG, "Emoji share intent launched: ${emoji.name}")
+                    true
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to launch share activity", e)
+                    false
+                }
             }
-
-            val chooser = Intent.createChooser(intent, "发送表情")
-            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(chooser)
-
-            Log.d(TAG, "Emoji share intent launched: ${emoji.name}")
-            true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to send emoji via share", e)
             false
         }
+    }
+
+    private fun buildShareIntent(uri: Uri, packageName: String?): Intent {
+        return Intent(Intent.ACTION_SEND).apply {
+            type = "image/*"
+            packageName?.let { `package` = it }
+            putExtra(Intent.EXTRA_STREAM, uri)
+            clipData = ClipData.newUri(context.contentResolver, "emoji", uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    }
+
+    private fun isIntentAvailable(intent: Intent): Boolean {
+        return intent.resolveActivity(context.packageManager) != null
+    }
+
+    private fun getContentUri(file: File): Uri {
+        return FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
     }
 
     /**
@@ -99,7 +135,7 @@ class EmojiSendManager(
      */
     fun getEmojiUri(emoji: EmojiEntity): Uri? {
         val file = resourceManager.getFile(emoji.filePath)
-        return if (file.exists()) Uri.fromFile(file) else null
+        return if (file.exists()) getContentUri(file) else null
     }
 
     /**

@@ -1,9 +1,16 @@
 package com.emoji.overlay.browser.ui
 
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.graphics.drawable.AnimatedImageDrawable
+import android.graphics.drawable.Drawable
+import android.os.Build
+import android.widget.ImageView
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,13 +22,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.emoji.overlay.R
 import com.emoji.overlay.data.entity.EmojiEntity
+import com.emoji.overlay.data.util.ResourceManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlin.math.max
 
 /**
  * Long press preview dialog.
@@ -39,11 +55,57 @@ fun LongPressPreview(
     isFavorite: Boolean,
     onDismiss: () -> Unit,
     onToggleFavorite: () -> Unit,
-    onSelect: () -> Unit
+    onSelect: () -> Unit,
+    onAddToCategory: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null
 ) {
+    val context = LocalContext.current
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    val resourceManager = remember(context) { ResourceManager.getInstance(context.applicationContext) }
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
+    val imageBitmap by produceState<androidx.compose.ui.graphics.ImageBitmap?>(
+        initialValue = null,
+        key1 = emoji.id,
+        key2 = emoji.filePath,
+        key3 = emoji.thumbPath
+    ) {
+        value = withContext(Dispatchers.IO) {
+            val previewPath = if (emoji.mimeType == "image/gif") {
+                emoji.filePath
+            } else {
+                emoji.thumbPath ?: emoji.filePath
+            }
+            val previewFile = resourceManager.getFile(previewPath)
+            if (!previewFile.exists()) {
+                null
+            } else {
+                decodeSampledBitmap(previewFile.absolutePath, 1080)?.asImageBitmap()
+            }
+        }
+    }
+    val gifFilePath = remember(emoji.filePath) {
+        resourceManager.getFile(emoji.filePath).absolutePath
+    }
+    val supportsAnimatedGif = emoji.mimeType == "image/gif" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+    val gifDrawable by produceState<Drawable?>(
+        initialValue = null,
+        key1 = emoji.id,
+        key2 = gifFilePath,
+        key3 = emoji.mimeType
+    ) {
+        if (!supportsAnimatedGif) {
+            value = null
+        } else {
+            value = withContext(Dispatchers.IO) {
+                runCatching {
+                    val source = ImageDecoder.createSource(java.io.File(gifFilePath))
+                    ImageDecoder.decodeDrawable(source)
+                }.getOrNull()
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -79,12 +141,34 @@ fun LongPressPreview(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Placeholder - in production, load actual image
-                    Text(
-                        text = emoji.name,
-                        fontSize = 48.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    if (supportsAnimatedGif) {
+                        AndroidView(
+                            factory = { ctx ->
+                                ImageView(ctx).apply {
+                                    adjustViewBounds = true
+                                    scaleType = ImageView.ScaleType.FIT_CENTER
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                            update = { imageView ->
+                                imageView.setImageDrawable(gifDrawable)
+                                (gifDrawable as? AnimatedImageDrawable)?.start()
+                            }
+                        )
+                    } else if (imageBitmap != null) {
+                        Image(
+                            bitmap = imageBitmap!!,
+                            contentDescription = emoji.name,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
+                    } else {
+                        Text(
+                            text = emoji.name,
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
 
                 // Top bar with favorite and close
@@ -105,7 +189,7 @@ fun LongPressPreview(
                     ) {
                         Icon(
                             Icons.Default.Close,
-                            contentDescription = "关闭",
+                            contentDescription = stringResource(R.string.preview_close),
                             tint = Color.White
                         )
                     }
@@ -121,7 +205,9 @@ fun LongPressPreview(
                     ) {
                         Icon(
                             if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = if (isFavorite) "取消收藏" else "收藏",
+                            contentDescription = stringResource(
+                                if (isFavorite) R.string.preview_unfavorite else R.string.preview_favorite
+                            ),
                             tint = if (isFavorite) MaterialTheme.colorScheme.error else Color.White
                         )
                     }
@@ -173,16 +259,99 @@ fun LongPressPreview(
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = onSelect,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("选择此表情")
+                    if (onAddToCategory == null) {
+                        Button(
+                            onClick = onSelect,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.select_this_emoji))
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = onAddToCategory,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(stringResource(R.string.add_to_category))
+                            }
+                            Button(
+                                onClick = onSelect,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(stringResource(R.string.select_this_emoji))
+                            }
+                        }
+                    }
+                    if (onDelete != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { showDeleteConfirm = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text(stringResource(R.string.delete_emoji))
+                        }
                     }
                 }
             }
         }
     }
+
+    if (showDeleteConfirm && onDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text(stringResource(R.string.delete_emoji_confirm_title)) },
+            text = {
+                Text(stringResource(R.string.delete_emoji_confirm_message, emoji.name))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirm = false
+                        onDelete()
+                        onDismiss()
+                    }
+                ) {
+                    Text(
+                        stringResource(R.string.confirm),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+}
+
+private fun decodeSampledBitmap(path: String, targetMaxPx: Int): android.graphics.Bitmap? {
+    val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, boundsOptions)
+    val width = boundsOptions.outWidth
+    val height = boundsOptions.outHeight
+    if (width <= 0 || height <= 0) return null
+
+    var sampleSize = 1
+    val halfWidth = width / 2
+    val halfHeight = height / 2
+    while (halfWidth / sampleSize >= targetMaxPx && halfHeight / sampleSize >= targetMaxPx) {
+        sampleSize *= 2
+    }
+    sampleSize = max(1, sampleSize)
+
+    val decodeOptions = BitmapFactory.Options().apply {
+        inSampleSize = sampleSize
+        inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+    }
+    return BitmapFactory.decodeFile(path, decodeOptions)
 }
 
 private fun formatFileSize(bytes: Long): String {

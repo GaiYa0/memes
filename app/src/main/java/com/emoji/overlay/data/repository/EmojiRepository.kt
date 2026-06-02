@@ -90,10 +90,11 @@ class EmojiRepository(
         name: String,
         keywords: String = "",
         categoryId: Long? = null,
-        tags: List<String> = emptyList()
+        tags: List<String> = emptyList(),
+        mimeHint: String? = null
     ): Result<Long> = withContext(Dispatchers.IO) {
         try {
-            val mimeType = resourceManager.detectMimeType(file)
+            val mimeType = resourceManager.detectMimeType(file, mimeHint)
 
             // Check for duplicate by content hash
             val hash = resourceManager.calculateContentHash(file)
@@ -255,10 +256,25 @@ class EmojiRepository(
     }
 
     suspend fun deleteCategory(categoryId: Long) {
-        // Move emojis to uncategorized
+        val category = categoryDao.getById(categoryId) ?: return
+
+        // Move emojis to uncategorized (do not delete emoji files)
         val emojis = emojiDao.getByCategory(categoryId, limit = Int.MAX_VALUE)
-        emojiDao.moveToCategory(emojis.map { it.id }, null)
+        if (emojis.isNotEmpty()) {
+            emojiDao.moveToCategory(emojis.map { it.id }, null)
+        }
         categoryDao.deleteById(categoryId)
+        categoryDao.updateAllEmojiCounts()
+    }
+
+    suspend fun moveEmojiToCategory(emojiId: Long, categoryId: Long?) = withContext(Dispatchers.IO) {
+        moveEmojisToCategory(listOf(emojiId), categoryId)
+    }
+
+    suspend fun moveEmojisToCategory(emojiIds: List<Long>, categoryId: Long?) = withContext(Dispatchers.IO) {
+        if (emojiIds.isEmpty()) return@withContext
+        emojiDao.moveToCategory(emojiIds, categoryId)
+        categoryDao.updateAllEmojiCounts()
     }
 
     // ==================== TAGS ====================

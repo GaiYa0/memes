@@ -46,8 +46,8 @@ interface EmojiDao {
     @Update
     suspend fun updateAll(emojis: List<EmojiEntity>)
 
-    @Query("UPDATE emojis SET usage_count = usage_count + 1, updated_at = :now WHERE id = :emojiId")
-    suspend fun incrementUsage(emojiId: Long, now: Long = System.currentTimeMillis())
+    @Query("UPDATE emojis SET usage_count = usage_count + 1 WHERE id = :emojiId")
+    suspend fun incrementUsage(emojiId: Long)
 
     @Query("UPDATE emojis SET is_favorite = :isFavorite, updated_at = :now WHERE id = :emojiId")
     suspend fun setFavorite(emojiId: Long, isFavorite: Boolean, now: Long = System.currentTimeMillis())

@@ -3,5 +3,44 @@
     <string name="app_name">Emoji Overlay</string>
     <string name="notification_channel_name">Emoji Overlay Service</string>
     <string name="notification_title">Emoji Overlay Active</string>
-    <string name="notification_text">Two-finger double-tap to open emoji panel</string>
+    <string name="notification_text">点击通知打开小菜单</string>
+
+    <!-- Preview -->
+    <string name="preview_close">关闭</string>
+    <string name="preview_favorite">收藏</string>
+    <string name="preview_unfavorite">取消收藏</string>
+    <string name="select_this_emoji">选择此表情</string>
+    <string name="add_to_category">添加到分类</string>
+    <string name="delete_emoji">删除表情</string>
+    <string name="delete_emoji_confirm_title">删除表情</string>
+    <string name="delete_emoji_confirm_message">删除后表情文件将无法恢复，确定删除「%1$s」吗？</string>
+    <string name="confirm">确定</string>
+    <string name="cancel">取消</string>
+
+    <!-- Category management -->
+    <string name="delete_category">删除分类</string>
+    <string name="delete_category_confirm_title">删除分类</string>
+    <string name="delete_category_confirm">将删除分类「%1$s」，其中 %2$d 个表情会保留并移至未分类，不会删除表情文件。确定删除吗？</string>
+    <string name="delete_category_system_confirm">将删除系统预设分类「%1$s」，其中 %2$d 个表情会保留并移至未分类，不会删除表情文件；该分类名删除后无法自动恢复。确定删除吗？</string>
+    <string name="category_picker_title">添加到分类</string>
+    <string name="category_picker_hint">选择目标分类</string>
+    <string name="move_to_uncategorized">移至未分类</string>
+    <string name="dialog_close">关闭</string>
+    <string name="rename_category">重命名分类</string>
+    <string name="enter_category">进入分类</string>
+    <string name="emoji_count_in_category">%1$d 个表情</string>
+
+    <!-- Overlay panel -->
+    <string name="overlay_tab_all">全部</string>
+    <string name="overlay_tab_recent">最近</string>
+    <string name="overlay_tab_favorites">收藏</string>
+    <string name="overlay_tab_categories">分类</string>
+    <string name="overlay_empty_all">还没有表情\n点击 APP 首页「导入表情」添加</string>
+    <string name="overlay_empty_recent">还没有使用记录</string>
+    <string name="overlay_empty_favorites">还没有收藏表情</string>
+    <string name="overlay_category_empty">该分类暂无表情</string>
+    <string name="overlay_pick_category">选择分类</string>
+    <string name="overlay_back_categories">返回分类列表</string>
+    <string name="overlay_emoji_total">共 %1$d 个表情</string>
+    <string name="overlay_filtering_category">分类：%1$s</string>
 </resources>

@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
-import android.os.Environment
 import android.util.Log
 import java.io.File
 import java.io.FileInputStream
@@ -48,11 +47,20 @@ class ResourceManager(private val context: Context) {
         private val SUPPORTED_MIME_TYPES = setOf(
             "image/png", "image/jpeg", "image/webp", "image/gif"
         )
+
+        @Volatile
+        private var INSTANCE: ResourceManager? = null
+
+        fun getInstance(context: Context): ResourceManager {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: ResourceManager(context.applicationContext).also { INSTANCE = it }
+            }
+        }
     }
 
     // ==================== DIRECTORY MANAGEMENT ====================
 
-    /** Root vault directory */
+    /** Root vault directory — lazy init, NOT in constructor */
     val vaultDir: File by lazy {
         File(context.getExternalFilesDir(null), VAULT_DIR).apply { mkdirs() }
     }
@@ -65,8 +73,19 @@ class ResourceManager(private val context: Context) {
     val cacheDir: File by lazy { File(vaultDir, CACHE_DIR).apply { mkdirs() } }
     val importDir: File by lazy { File(vaultDir, IMPORT_DIR).apply { mkdirs() } }
 
-    init {
-        // Create .nomedia to prevent media scanner
+    /**
+     * Initialize vault directories. Call from background thread.
+     * Safe to call multiple times.
+     */
+    fun ensureDirectories() {
+        vaultDir.mkdirs()
+        imagesDir.mkdirs()
+        gifDir.mkdirs()
+        animatedDir.mkdirs()
+        videoDir.mkdirs()
+        thumbDir.mkdirs()
+        cacheDir.mkdirs()
+        importDir.mkdirs()
         File(vaultDir, ".nomedia").createNewFile()
     }
 
@@ -382,15 +401,69 @@ class ResourceManager(private val context: Context) {
     }
 
     /**
-     * Detect MIME type from file extension.
+     * Detect MIME type with multi-step fallback:
+     * 1) caller-provided mimeHint (e.g. ContentResolver.getType)
+     * 2) file header signature sniffing
+     * 3) file extension
      */
-    fun detectMimeType(file: File): String {
+    fun detectMimeType(file: File, mimeHint: String? = null): String {
+        val normalizedHint = mimeHint?.lowercase()
+        if (normalizedHint != null && isSupportedMimeType(normalizedHint)) {
+            return normalizedHint
+        }
+
+        detectMimeTypeByHeader(file)?.let { return it }
+
         return when (file.extension.lowercase()) {
             "png" -> "image/png"
             "jpg", "jpeg" -> "image/jpeg"
             "webp" -> "image/webp"
             "gif" -> "image/gif"
             else -> "application/octet-stream"
+        }
+    }
+
+    private fun detectMimeTypeByHeader(file: File): String? {
+        if (!file.exists() || file.length() < 12) return null
+        return try {
+            val header = ByteArray(12)
+            FileInputStream(file).use { input ->
+                val read = input.read(header)
+                if (read < 12) return null
+            }
+
+            when {
+                // PNG signature: 89 50 4E 47 0D 0A 1A 0A
+                header[0] == 0x89.toByte() &&
+                    header[1] == 0x50.toByte() &&
+                    header[2] == 0x4E.toByte() &&
+                    header[3] == 0x47.toByte() -> "image/png"
+
+                // JPEG signature: FF D8 FF
+                header[0] == 0xFF.toByte() &&
+                    header[1] == 0xD8.toByte() &&
+                    header[2] == 0xFF.toByte() -> "image/jpeg"
+
+                // GIF signature: GIF87a / GIF89a
+                header[0] == 'G'.code.toByte() &&
+                    header[1] == 'I'.code.toByte() &&
+                    header[2] == 'F'.code.toByte() -> "image/gif"
+
+                // WebP signature: RIFF....WEBP
+                header[0] == 'R'.code.toByte() &&
+                    header[1] == 'I'.code.toByte() &&
+                    header[2] == 'F'.code.toByte() &&
+                    header[3] == 'F'.code.toByte() &&
+                    header[8] == 'W'.code.toByte() &&
+                    header[9] == 'E'.code.toByte() &&
+                    header[10] == 'B'.code.toByte() &&
+                    header[11] == 'P'.code.toByte() -> "image/webp"
+
+                else -> null
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Header mime detect failed: ${file.name}", e)
+            null
         }
     }
 }

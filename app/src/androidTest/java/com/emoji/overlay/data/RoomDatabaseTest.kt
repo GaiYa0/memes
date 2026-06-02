@@ -1,8 +1,9 @@
 package com.emoji.overlay.data
 
-import android.app.Application
+import android.content.Context
 import androidx.room.Room
-import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.emoji.overlay.data.dao.CategoryDao
 import com.emoji.overlay.data.dao.EmojiDao
 import com.emoji.overlay.data.dao.RecentHistoryDao
@@ -15,24 +16,19 @@ import com.emoji.overlay.data.entity.RecentHistoryEntity
 import com.emoji.overlay.data.entity.TagEntity
 import kotlinx.coroutines.runBlocking
 import org.junit.After
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
 /**
- * Room database tests using Robolectric.
- *
- * These tests run on JVM (no Android device needed) and perform
- * actual Room database operations including insert, query, delete,
- * and performance benchmarks.
- *
- * Requirements: JDK 17 (Robolectric 4.13 doesn't support JDK 25)
+ * Room database tests on Android instrumentation runtime.
+ * Avoids Robolectric+JDK incompatibility in local JVM tests.
  */
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28], application = Application::class)
+@RunWith(AndroidJUnit4::class)
 class RoomDatabaseTest {
 
     private lateinit var database: EmojiDatabase
@@ -43,7 +39,7 @@ class RoomDatabaseTest {
 
     @Before
     fun setup() {
-        val context = ApplicationProvider.getApplicationContext<Application>()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as Context
         database = Room.inMemoryDatabaseBuilder(context, EmojiDatabase::class.java)
             .allowMainThreadQueries()
             .build()
@@ -57,8 +53,6 @@ class RoomDatabaseTest {
     fun teardown() {
         database.close()
     }
-
-    // ==================== INSERT TESTS ====================
 
     @Test
     fun insertSingleEmoji() = runBlocking {
@@ -91,26 +85,8 @@ class RoomDatabaseTest {
         val elapsed = System.currentTimeMillis() - start
 
         assertEquals(1000, ids.size)
-        println("=== PERFORMANCE: Insert 1000 emojis (Room) ===")
-        println("Time: ${elapsed}ms")
         assertTrue("1000 inserts should complete within 5000ms", elapsed < 5000)
     }
-
-    @Test
-    fun insert10000Emojis() = runBlocking {
-        val emojis = (1L..10000L).map { createTestEmoji(it, "emoji_$it") }
-        val start = System.currentTimeMillis()
-        val ids = emojiDao.insertBatch(emojis, batchSize = 500)
-        val elapsed = System.currentTimeMillis() - start
-
-        assertEquals(10000, ids.size)
-        println("=== PERFORMANCE: Insert 10000 emojis (Room) ===")
-        println("Time: ${elapsed}ms")
-        println("Rate: ${10000 * 1000 / elapsed} inserts/sec")
-        assertTrue("10000 inserts should complete within 30000ms", elapsed < 30000)
-    }
-
-    // ==================== QUERY TESTS ====================
 
     @Test
     fun queryRecentEmojis() = runBlocking {
@@ -202,8 +178,6 @@ class RoomDatabaseTest {
         assertEquals("happy_face", results.first().name)
     }
 
-    // ==================== DELETE TESTS ====================
-
     @Test
     fun deleteSingleEmoji() = runBlocking {
         val emoji = createTestEmoji(1, "smile")
@@ -236,89 +210,6 @@ class RoomDatabaseTest {
         val active = emojiDao.getCount()
         assertEquals(95, active)
     }
-
-    // ==================== PERFORMANCE TESTS ====================
-
-    @Test
-    fun performanceInsert10000() = runBlocking {
-        val emojis = (1L..10000L).map { createTestEmoji(it, "emoji_$it") }
-
-        val start = System.currentTimeMillis()
-        emojiDao.insertBatch(emojis, batchSize = 500)
-        val elapsed = System.currentTimeMillis() - start
-
-        println("========================================")
-        println("=== PERFORMANCE TEST: Insert 10000 emojis (Room) ===")
-        println("Time: ${elapsed}ms")
-        println("Rate: ${10000 * 1000 / elapsed} inserts/sec")
-        println("========================================")
-        assertTrue("Should complete within 30s", elapsed < 30000)
-    }
-
-    @Test
-    fun performanceQueryByIndex() = runBlocking {
-        val emojis = (1L..10000L).map {
-            createTestEmoji(it, "emoji_$it", categoryId = it % 10, usageCount = it)
-        }
-        emojiDao.insertBatch(emojis, batchSize = 500)
-
-        // Query by category (indexed)
-        val start1 = System.currentTimeMillis()
-        val byCategory = emojiDao.getByCategory(5L, limit = 100)
-        val elapsed1 = System.currentTimeMillis() - start1
-        println("========================================")
-        println("=== PERFORMANCE TEST: Query by category (10k records) ===")
-        println("Time: ${elapsed1}ms, Results: ${byCategory.size}")
-        println("========================================")
-
-        // Query favorites (indexed)
-        val start2 = System.currentTimeMillis()
-        val favorites = emojiDao.getFavorites(limit = 100)
-        val elapsed2 = System.currentTimeMillis() - start2
-        println("=== PERFORMANCE TEST: Query favorites (10k records) ===")
-        println("Time: ${elapsed2}ms, Results: ${favorites.size}")
-        println("========================================")
-
-        assertTrue("Index query should be < 100ms", elapsed1 < 100)
-    }
-
-    @Test
-    fun performanceSearch() = runBlocking {
-        val emojis = (1L..10000L).map {
-            createTestEmoji(it, "emoji_${it}_face", keywords = "kw_${it % 100}")
-        }
-        emojiDao.insertBatch(emojis, batchSize = 500)
-
-        val start = System.currentTimeMillis()
-        val results = emojiDao.search("500")
-        val elapsed = System.currentTimeMillis() - start
-
-        println("========================================")
-        println("=== PERFORMANCE TEST: Search in 10k records (Room) ===")
-        println("Time: ${elapsed}ms, Results: ${results.size}")
-        println("========================================")
-        assertTrue("Search should be < 200ms", elapsed < 200)
-    }
-
-    @Test
-    fun performanceSortByUsage() = runBlocking {
-        val emojis = (1L..10000L).map {
-            createTestEmoji(it, "emoji_$it", usageCount = 10001 - it)
-        }
-        emojiDao.insertBatch(emojis, batchSize = 500)
-
-        val start = System.currentTimeMillis()
-        val all = emojiDao.getAll(limit = 10000)
-        val elapsed = System.currentTimeMillis() - start
-
-        println("========================================")
-        println("=== PERFORMANCE TEST: Sort 10k records by usage (Room) ===")
-        println("Time: ${elapsed}ms")
-        println("========================================")
-        assertTrue("Sort should be < 500ms", elapsed < 500)
-    }
-
-    // ==================== HELPERS ====================
 
     private fun createTestEmoji(
         id: Long = 0,

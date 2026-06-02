@@ -87,20 +87,23 @@ abstract class EmojiDatabase : RoomDatabase() {
         override fun onCreate(db: SupportSQLiteDatabase) {
             super.onCreate(db)
             // Seed default categories
+            val nowExpr = "(CAST(strftime('%s','now') AS INTEGER) * 1000)"
             val defaults = listOf(
-                "('Smileys & People', '😀', 1, 1, 1)",
-                "('Animals & Nature', '🐱', 2, 1, 1)",
-                "('Food & Drink', '🍕', 3, 1, 1)",
-                "('Activities', '⚽', 4, 1, 1)",
-                "('Travel & Places', '✈️', 5, 1, 1)",
-                "('Objects', '💡', 6, 1, 1)",
-                "('Symbols', '❤️', 7, 1, 1)",
-                "('Flags', '🏳️', 8, 1, 1)",
-                "('Custom', '⭐', 9, 0, 1)"
+                "('Smileys & People', '😀', '', 1, 1, 1, 0, $nowExpr, $nowExpr)",
+                "('Animals & Nature', '🐱', '', 2, 1, 1, 0, $nowExpr, $nowExpr)",
+                "('Food & Drink', '🍕', '', 3, 1, 1, 0, $nowExpr, $nowExpr)",
+                "('Activities', '⚽', '', 4, 1, 1, 0, $nowExpr, $nowExpr)",
+                "('Travel & Places', '✈️', '', 5, 1, 1, 0, $nowExpr, $nowExpr)",
+                "('Objects', '💡', '', 6, 1, 1, 0, $nowExpr, $nowExpr)",
+                "('Symbols', '❤️', '', 7, 1, 1, 0, $nowExpr, $nowExpr)",
+                "('Flags', '🏳️', '', 8, 1, 1, 0, $nowExpr, $nowExpr)",
+                "('Custom', '⭐', '', 9, 0, 1, 0, $nowExpr, $nowExpr)"
             )
             defaults.forEach { values ->
                 db.execSQL(
-                    "INSERT INTO categories (name, icon, sort_order, is_system, is_visible) VALUES $values"
+                    "INSERT INTO categories " +
+                            "(name, icon, description, sort_order, is_system, is_visible, emoji_count, created_at, updated_at) " +
+                            "VALUES $values"
                 )
             }
         }
