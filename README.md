@@ -16,7 +16,9 @@ Android 表情包悬浮窗应用，支持导入、浏览、搜索与快捷发送
 ./gradlew assembleRelease  # Release APK
 ```
 
-Release APK 输出路径：`app/build/outputs/apk/release/`
+Release APK 输出路径：`app/build/outputs/apk/release/app-release.apk`
+
+> Release 构建使用 debug 签名，可直接 sideload 安装。上架 Play Store 前需替换为正式签名密钥。
 
 ## CI
 

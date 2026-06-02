@@ -25,7 +25,11 @@
         <service
             android:name=".service.EmojiOverlayService"
             android:exported="false"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="emoji_overlay" />
+        </service>
 
         <!-- Share import handler -->
         <activity
