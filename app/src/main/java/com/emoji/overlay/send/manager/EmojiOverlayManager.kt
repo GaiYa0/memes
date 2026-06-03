@@ -10,6 +10,7 @@ import com.emoji.overlay.browser.manager.LongPressPreviewManager
 import com.emoji.overlay.browser.manager.ThumbnailCache
 import com.emoji.overlay.browser.viewmodel.EmojiBrowserViewModel
 import com.emoji.overlay.browser.usecase.*
+import com.emoji.overlay.send.SharePayload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -68,6 +69,9 @@ class EmojiOverlayManager(private val context: Context) {
 
     private val _selectedEmoji = MutableStateFlow<EmojiEntity?>(null)
     val selectedEmoji: StateFlow<EmojiEntity?> = _selectedEmoji.asStateFlow()
+
+    private val _pendingShare = MutableStateFlow<SharePayload?>(null)
+    val pendingShare: StateFlow<SharePayload?> = _pendingShare.asStateFlow()
 
     private val _sendResult = MutableStateFlow<SendResult?>(null)
     val sendResult: StateFlow<SendResult?> = _sendResult.asStateFlow()
@@ -153,17 +157,21 @@ class EmojiOverlayManager(private val context: Context) {
      */
     fun shareEmoji(emoji: EmojiEntity) {
         scope.launch {
-            val success = sendManager.sendViaShare(emoji)
-            _sendResult.value = if (success) {
-                SendResult.Shared(emoji)
-            } else {
-                SendResult.Failure(emoji, "Failed to share")
+            val payload = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                sendManager.prepareShare(emoji)
             }
-
-            if (success) {
+            if (payload != null) {
+                _pendingShare.value = payload
+                _sendResult.value = SendResult.Shared(emoji)
                 viewModel.recordUsage(emoji.id)
+            } else {
+                _sendResult.value = SendResult.Failure(emoji, "Failed to share")
             }
         }
+    }
+
+    fun clearPendingShare() {
+        _pendingShare.value = null
     }
 
     /**

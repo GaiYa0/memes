@@ -5,6 +5,7 @@ internal const val TAG = "EmojiOverlay"
 object Routes {
     const val HOME = "home"
     const val IMPORT = "import"
+    const val ALBUM_IMPORT = "album_import"
     const val BROWSE = "browse"
     const val FAVORITES = "favorites"
     const val RECENT = "recent"

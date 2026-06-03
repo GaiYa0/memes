@@ -23,6 +23,7 @@ import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.Toast
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -41,13 +42,19 @@ import com.emoji.overlay.data.repository.EmojiRepositoryHolder
 import com.emoji.overlay.data.util.ResourceManager
 import com.emoji.overlay.gesture.OverlayTouchListener
 import com.emoji.overlay.gesture.PanelDragController
+import com.emoji.overlay.send.ShareIntentHelper
+import com.emoji.overlay.send.SharePayload
 import com.emoji.overlay.send.manager.EmojiSendManager
+import com.emoji.overlay.send.ui.ShareSheetPresentation
+import com.emoji.overlay.send.ui.ShareTargetBottomSheet
 import com.emoji.overlay.ui.EmojiPanel
+import com.emoji.overlay.ui.theme.EmojiOverlayTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Foreground service that manages the emoji overlay window.
@@ -115,6 +122,7 @@ class EmojiOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         get() = savedStateRegistryController.savedStateRegistry
 
     private var isPanelVisible by mutableStateOf(false)
+    private var pendingShare by mutableStateOf<SharePayload?>(null)
     private var panelOffsetY by mutableFloatStateOf(0f)
     private var panelHeightPx: Int = 0
     private var panelAnimator: ValueAnimator? = null
@@ -327,27 +335,59 @@ class EmojiOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
             setViewTreeLifecycleOwner(this@EmojiOverlayService)
             setViewTreeSavedStateRegistryOwner(this@EmojiOverlayService)
             setContent {
-                EmojiPanel(
-                    visible = isPanelVisible,
-                    panelHeightPx = panelHeightPx,
-                    onPanelDragStart = ::onPanelDragStart,
-                    onPanelOffsetChange = ::onPanelDragOffset,
-                    onDragEnd = ::handlePanelDragEnd,
-                    onEmojiSelected = { emoji ->
-                        serviceScope.launch {
-                            val success = sendManager.sendViaShare(emoji)
-                            if (success) {
-                                dismissOverlayAnimated()
-                            } else {
-                                Toast.makeText(
-                                    this@EmojiOverlayService,
-                                    "分享失败，请确认已安装 QQ",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                EmojiOverlayTheme {
+                    val sharePayload = pendingShare
+                    Box {
+                        EmojiPanel(
+                            visible = isPanelVisible,
+                            panelHeightPx = panelHeightPx,
+                            onPanelDragStart = ::onPanelDragStart,
+                            onPanelOffsetChange = ::onPanelDragOffset,
+                            onDragEnd = ::handlePanelDragEnd,
+                            onEmojiSelected = { emoji ->
+                                serviceScope.launch {
+                                    val payload = withContext(Dispatchers.IO) {
+                                        sendManager.prepareShare(emoji)
+                                    }
+                                    if (payload != null) {
+                                        pendingShare = payload
+                                    } else {
+                                        Toast.makeText(
+                                            this@EmojiOverlayService,
+                                            "分享失败，请重试",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
                             }
+                        )
+                        if (sharePayload != null) {
+                            ShareTargetBottomSheet(
+                                visible = true,
+                                presentation = ShareSheetPresentation.OverlayEmbedded,
+                                mimeType = sharePayload.mimeType,
+                                shareUri = sharePayload.uri,
+                                title = sharePayload.title,
+                                onTargetClick = { target ->
+                                    ShareIntentHelper.shareToPackage(
+                                        this@EmojiOverlayService,
+                                        sharePayload,
+                                        target.packageName
+                                    )
+                                    pendingShare = null
+                                },
+                                onMoreClick = {
+                                    ShareIntentHelper.shareWithSystemChooser(
+                                        this@EmojiOverlayService,
+                                        sharePayload
+                                    )
+                                    pendingShare = null
+                                },
+                                onDismiss = { pendingShare = null }
+                            )
                         }
                     }
-                )
+                }
             }
         }
 

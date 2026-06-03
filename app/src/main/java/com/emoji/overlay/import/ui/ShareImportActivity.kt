@@ -24,6 +24,7 @@ import com.emoji.overlay.import.model.ImportSource
 import com.emoji.overlay.import.util.DuplicateDetector
 import com.emoji.overlay.import.util.FileValidator
 import com.emoji.overlay.import.util.ThumbnailGenerator
+import com.emoji.overlay.ui.theme.EmojiOverlayTheme
 
 /**
  * Activity that handles share intents from other apps.
@@ -78,7 +79,7 @@ class ShareImportActivity : ComponentActivity() {
         importManager.startShareImport(uris, sourceApp)
 
         setContent {
-            MaterialTheme {
+            EmojiOverlayTheme {
                 ShareImportScreen(
                     importManager = importManager,
                     onDismiss = { finish() }

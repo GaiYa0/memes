@@ -24,6 +24,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,14 +35,26 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.emoji.overlay.import.media.MediaImagePermissions
+import com.emoji.overlay.import.ui.ImportPermissionBanner
 
 @Composable
-fun ImportScreen(viewModel: MainViewModel) {
+fun ImportScreen(
+    viewModel: MainViewModel,
+    onNavigateToAlbumImport: () -> Unit
+) {
     val context = LocalContext.current
     var importResult by remember { mutableStateOf("") }
+    var hasMediaPermission by remember {
+        mutableStateOf(MediaImagePermissions.hasPermission(context))
+    }
+    var pendingAlbumNavigation by remember { mutableStateOf(false) }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
@@ -59,6 +72,44 @@ fun ImportScreen(viewModel: MainViewModel) {
             viewModel.importFromUris(context, uris)
             importResult = "正在导入 ${uris.size} 个文件..."
         }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasMediaPermission = granted
+        if (granted) {
+            onNavigateToAlbumImport()
+        }
+    }
+
+    fun requestMediaPermission() {
+        permissionLauncher.launch(MediaImagePermissions.requiredPermission())
+    }
+
+    fun openAlbumImportFlow() {
+        if (MediaImagePermissions.hasPermission(context)) {
+            onNavigateToAlbumImport()
+        } else {
+            pendingAlbumNavigation = true
+            requestMediaPermission()
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val granted = MediaImagePermissions.hasPermission(context)
+                hasMediaPermission = granted
+                if (granted && pendingAlbumNavigation) {
+                    pendingAlbumNavigation = false
+                    onNavigateToAlbumImport()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Column(
@@ -80,16 +131,26 @@ fun ImportScreen(viewModel: MainViewModel) {
             }
         }
 
+        if (!hasMediaPermission) {
+            ImportPermissionBanner(
+                onRequestPermission = { requestMediaPermission() },
+                onOpenSettings = {
+                    pendingAlbumNavigation = true
+                    MediaImagePermissions.openAppSettings(context)
+                }
+            )
+        }
+
         ImportOptionCard(
             icon = Icons.Default.PhotoLibrary,
             title = "从相册选择",
-            description = "选择手机相册中的图片",
+            description = "浏览全部相册分类（微信、QQ、DCIM 等）",
             color = Color(0xFF4CAF50),
             onClick = {
                 try {
-                    imagePickerLauncher.launch("image/*")
+                    openAlbumImportFlow()
                 } catch (e: Exception) {
-                    Log.e(TAG, "Gallery launch failed", e)
+                    Log.e(TAG, "Album import launch failed", e)
                 }
             }
         )
@@ -107,6 +168,22 @@ fun ImportScreen(viewModel: MainViewModel) {
                 }
             }
         )
+
+        if (!hasMediaPermission) {
+            ImportOptionCard(
+                icon = Icons.Default.PhotoLibrary,
+                title = "系统选择器（相册较少）",
+                description = "无需权限，但只能看到少量相册",
+                color = Color(0xFF9E9E9E),
+                onClick = {
+                    try {
+                        imagePickerLauncher.launch("image/*")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Fallback gallery launch failed", e)
+                    }
+                }
+            )
+        }
 
         if (importResult.isNotEmpty()) {
             Card(
